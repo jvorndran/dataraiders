@@ -266,3 +266,40 @@ class Sprout:
 
         return data
 
+    def get_all_messages(self, filters, fields=None, limit=100, timezone="America/New_York"):
+        """
+        Get all messages based on the provided filters.
+
+        :param filters: The filters to apply to the messages.
+        :type filters: dict
+        :param fields: The fields to include in the messages.
+        :type fields: list
+        :param limit: The maximum number of messages to retrieve.
+        :type limit: int
+        :param timezone: The timezone to use for the query.
+        :type timezone: str
+        :return: A list of messages.
+        :rtype: list
+        """
+        data = []
+        messages = self.get_messages_analytics(
+                filters=filters, fields=fields, limit=limit, timezone=timezone
+            )
+
+        while True:
+
+            if messages.error:
+                raise Exception(f"Error: {messages.error}")
+            if messages.data:
+                data.extend(messages.data)
+                page = messages.paging.get("next_cursor", None)
+                if page is None:
+                    break
+            else:
+                raise Exception("No data found")
+
+            messages = self.get_messages_analytics(
+                filters=filters, fields=fields, limit=limit, timezone=timezone, page_cursor=page
+            )
+
+        return data
