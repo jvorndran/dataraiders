@@ -185,6 +185,12 @@ class Sprout:
         return self._request("GET", f"{self.customer_id}/media/submission/{submission_id}")
 
     def get_all_profiles(self):
+        """
+        Get all Sprout Social profiles that are owned by our Sprout Social account.
+
+        :return: List of dictionaries containing the network type, name, native name, and native ID of each profile.
+        :rtype: list[dict]
+        """
         data = []
         profiles = self.get_profiles()
         if profiles.error:
@@ -200,37 +206,63 @@ class Sprout:
         return data
 
     def get_all_owned_profiles_analytics(self, filters, metrics, **kwargs):
+        """
+        Retrieves analytics data for all owned profiles based on the provided filters and metrics.
+
+        :param filters: The filters to apply to the analytics data.
+        :type filters: list
+        :param metrics: The metrics to retrieve from the analytics data.
+        :type metrics: list
+        :param kwargs: Optional keyword arguments for additional configuration.
+        :type kwargs: dict
+        :return: A list containing the analytics data for all owned profiles.
+        :rtype: list
+        :raises Exception: If there is an error retrieving the analytics data or no data is found.
+        """
         data = []
-        profile_analytics = self.get_analytics_profiles(filters=filters, metrics=metrics, **kwargs)
-        if profile_analytics.error:
-            raise Exception(f"Error: {profile_analytics.error}")
-
-        has_more_pages = True
-
-        if profile_analytics.data:
-            while has_more_pages:
+        page = 1
+        while True:
+            kwargs["page"] = page
+            profile_analytics = self.get_analytics_profiles(filters=filters, metrics=metrics, **kwargs)
+            if profile_analytics.error:
+                raise Exception(f"Error: {profile_analytics.error}")
+            if profile_analytics.data:
                 data.append(profile_analytics.data)
-                profile_analytics = self.get_analytics_profiles(filters=filters, metrics=metrics, **kwargs)
-                has_more_pages = check_has_more_pages(profile_analytics.paging)
-        else:
-            raise Exception("No data found")
-
+                if not check_has_more_pages(profile_analytics.paging):
+                    break
+                page += 1
+            else:
+                raise Exception("No data found")
         return data
 
     def get_all_post_analytics(self, filters, metrics, **kwargs):
+        """
+        Get all post analytics data.
+
+        :param filters: The filters to be applied to the post analytics data.
+        :type filters: dict
+        :param metrics: The metrics to be included in the post analytics data.
+        :type metrics: list
+        :param kwargs: Additional keyword arguments for the method.
+        :type kwargs: dict
+        :return: The post analytics data.
+        :rtype: list
+        """
         data = []
-        post_analytics = self.get_post_analytics(filters=filters, metrics=metrics, **kwargs)
-        if post_analytics.error:
-            raise Exception(f"Error: {post_analytics.error}")
+        page = 1
 
-        has_more_pages = True
-
-        if post_analytics.data:
-            while has_more_pages:
+        while True:
+            kwargs["page"] = page
+            post_analytics = self.get_post_analytics(filters=filters, metrics=metrics, **kwargs)
+            if post_analytics.error:
+                raise Exception(f"Error: {post_analytics.error}")
+            if post_analytics.data:
                 data.append(post_analytics.data)
-                post_analytics = self.get_post_analytics(filters=filters, metrics=metrics, **kwargs)
-                has_more_pages = check_has_more_pages(post_analytics.paging)
-        else:
-            raise Exception("No data found")
+                if not check_has_more_pages(post_analytics.paging):
+                    break
+                page += 1
+            else:
+                raise Exception("No data found")
 
         return data
+
