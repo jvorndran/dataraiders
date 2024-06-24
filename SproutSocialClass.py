@@ -122,46 +122,12 @@ class Sprout:
         data = {"filters": filters, **kwargs}
         return self._request("POST", f"{self.customer_id}/messages", json=data)
 
-    def query_topic_messages(self, topic_id, filters, fields, metrics, sort, timezone, limit, page):
-        data = {
-            "filters": filters,
-            "fields": fields,
-            "metrics": metrics,
-            "sort": sort,
-            "timezone": timezone,
-            "limit": limit,
-            "page": page,
-        }
+    def query_topic_messages(self, topic_id, filters, fields, metrics, **kwargs):
+        data = {"filters": filters, "fields": fields, "metrics": metrics, **kwargs}
         return self._request("POST", f"{self.customer_id}/listening/topics/{topic_id}/messages", json=data)
 
-    # def query_all_topic_messages(self, topic_id, filters, fields, metrics, sort, timezone, limit=100):
-    #     all_messages = []
-    #     page = 1
-    #     has_more_pages = True
-
-    #     while has_more_pages:
-    #         response = self.query_topic_messages(topic_id, filters, fields, metrics, sort, timezone, limit, page)
-    #         sprout_response = SproutResponse.from_response(response)
-
-    #         if sprout_response.data:
-    #             all_messages.extend(sprout_response.data)
-    #             # If the length of data is less than limit, it means this is the last page
-    #             has_more_pages = len(sprout_response.data) == limit
-    #             page += 1
-    #         else:
-    #             has_more_pages = False
-
-    #     return all_messages
-
-    def query_topic_metrics(self, topic_id, filters, metrics, sort, timezone, limit, page):
-        data = {
-            "filters": filters,
-            "metrics": metrics,
-            "sort": sort,
-            "timezone": timezone,
-            "limit": limit,
-            "page": page,
-        }
+    def query_topic_metrics(self, topic_id, filters, metrics, **kwargs):
+        data = {"filters": filters, "metrics": metrics, **kwargs}
         return self._request("POST", f"{self.customer_id}/listening/topics/{topic_id}/metrics", json=data)
 
     def create_publishing_post(self, post_data):
@@ -291,7 +257,7 @@ class Sprout:
             if messages.error:
                 raise Exception(f"Error: {messages.error}")
             if messages.data:
-                data.extend(messages.data)
+                data.append(messages.data)
                 page = messages.paging.get("next_cursor", None)
                 if page is None:
                     break
@@ -301,5 +267,82 @@ class Sprout:
             messages = self.get_messages_analytics(
                 filters=filters, fields=fields, limit=limit, timezone=timezone, page_cursor=page
             )
+
+        return data
+
+    def get_all_topic_messages(self, topic_id, filters, fields, **kwargs):
+        """
+        Get all messages for a specific topic.
+
+        :param topic_id: The ID of the topic to retrieve messages for.
+        :type topic_id: str
+        :param filters: The filters to apply to the messages.
+        :type filters: dict
+        :param fields: The fields to include in the messages.
+        :type fields: list
+        :param metrics: The metrics to retrieve.
+        :type metrics: list
+        :param sort: The sorting criteria for the messages.
+        :type sort: list
+        :param timezone: The timezone to use for the query.
+        :type timezone: str
+        :param limit: The maximum number of messages to retrieve.
+        :type limit: int
+        :return: The messages data.
+        :rtype: list
+        """
+        data = []
+        page = 1
+
+        while True:
+            kwargs["page"] = page
+            topic_messages = self.query_topic_messages(
+                topic_id=topic_id,
+                filters=filters,
+                fields=fields,
+                **kwargs
+            )
+            if topic_messages.error:
+                raise Exception(f"Error: {topic_messages.error}")
+            if topic_messages.data:
+                data.append(topic_messages.data)
+                if not check_has_more_pages(topic_messages.paging):
+                    break
+                page += 1
+            else:
+                raise Exception("No data found")
+
+        return data
+
+    def get_all_topic_metrics(self, topic_id, filters, metrics, **kwargs):
+        """
+        Get all metrics for a specific topic.
+
+        :param topic_id: The ID of the topic to retrieve metrics for.
+        :type topic_id: str
+        :param filters: The filters to apply to the metrics.
+        :type filters: dict
+        :param metrics: The metrics to retrieve.
+        :type metrics: list
+        :param kwargs: Additional keyword arguments for the method.
+        :type kwargs: dict
+        :return: The metrics data.
+        :rtype: list
+        """
+        data = []
+        page = 1
+
+        while True:
+            kwargs["page"] = page
+            topic_metrics = self.query_topic_metrics(topic_id=topic_id, filters=filters, metrics=metrics, **kwargs)
+            if topic_metrics.error:
+                raise Exception(f"Error: {topic_metrics.error}")
+            if topic_metrics.data:
+                data.append(topic_metrics.data)
+                if not check_has_more_pages(topic_metrics.paging):
+                    break
+                page += 1
+            else:
+                raise Exception("No data found")
 
         return data
