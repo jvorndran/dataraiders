@@ -234,7 +234,3 @@ class Sprout:
             raise Exception("No data found")
 
         return data
-
-
-
-

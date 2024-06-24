@@ -37,10 +37,12 @@ def query_table(connection, query):
     cursor = connection.cursor()
     response = {}
     try:
-        response['message'] = cursor.execute(query)
+        cursor.execute(query)
         connection.commit()
+        response['message'] = "Query Successful"
         response['success'] = True
-    except Error:
-        response['error'] = True
+    except Error as e:
+        response['message'] = str(e)
+        response['success'] = False
 
     return response

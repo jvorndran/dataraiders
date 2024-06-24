@@ -15,5 +15,4 @@ for profile in owned_profiles:
     else:
         print(f"Row insertion failed for {profile}")
 
-
 DR.close_connection(connection)
