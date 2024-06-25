@@ -72,7 +72,7 @@ class SproutRequest:
 
 def check_has_more_pages(paging_object):
     if paging_object:
-        return paging_object["current_page"] != paging_object["total_pages"]
+        return paging_object.get("current_page") != paging_object.get("total_pages")
 
 
 class Sprout:
@@ -84,7 +84,7 @@ class Sprout:
         )
 
     def __del__(self):
-        self.session.close()
+        self.sprout_request.session.close()
 
     def _request(self, method, endpoint, **kwargs):
         return self.sprout_request.make_request(method, f"{self.sprout_request.api_version}/{endpoint}", **kwargs)

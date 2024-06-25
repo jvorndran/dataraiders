@@ -1,6 +1,7 @@
 # Script that tests connecting to the cloud sql db and inserting a row into a table
 from mysql.connector import Error, connect
 import os
+from Logger import logger
 
 
 # Set up connection to the cloud sql db
@@ -15,15 +16,15 @@ def connect_to_db():
 
         if connection.is_connected():
             db_info = connection.get_server_info()
-            print(f"Connected to MySQL Server version {db_info}")
-            cursor = connection.cursor()
-            cursor.execute("select database();")
-            record = cursor.fetchone()
-            print(f"Connected to database: {record}")
+            logger.info(f"Connected to MySQL Server version {db_info}")
+            with connection.cursor() as cursor:
+                cursor.execute("select database();")
+                record = cursor.fetchone()
+                logger.info(f"Connected to database: {record}")
 
         return connection
     except Error as e:
-        print(f"The error '{e}' occurred")
+        logger.error(f"The error '{e}' occurred")
         raise Exception(f"Error: {e}")
 
 
@@ -37,7 +38,7 @@ def close_connection(connection):
     if connection.is_connected():
         connection.close()
         connection.cursor().close()
-        print("MySQL connection is closed")
+        logger.info("MySQL connection is closed")
 
 
 def query_database(connection, query, params=None):
@@ -53,18 +54,18 @@ def query_database(connection, query, params=None):
              - 'message': A string message indicating the success or failure of the query.
              - 'success': A boolean value indicating whether the query was successful (True) or not (False).
     """
-    cursor = connection.cursor()
     response = {}
-    try:
-        cursor.execute(query, params)
-        connection.commit()
-        response['message'] = "Query Successful"
-        response['success'] = True
-    except Error as e:
-        response['message'] = str(e)
-        response['success'] = False
-        connection.rollback()
-        raise Exception(f"Error: {e}")
+    with connection.cursor() as cursor:
+        try:
+            cursor.execute(query, params)
+            connection.commit()
+            response['message'] = "Query Successful"
+            response['success'] = True
+        except Error as e:
+            response['message'] = str(e)
+            response['success'] = False
+            connection.rollback()
+            logger.warning(f"The Query {query} failed")
 
     return response
 
@@ -84,15 +85,17 @@ def batch_insert(connection, table_name, columns, values_list):
     :return: A string message indicating the success or failure of the batch insert operation.
     :rtype: str
     """
-    cursor = connection.cursor()
-    query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({', '.join(['%s'] * len(columns))})"
-    try:
-        cursor.executemany(query, values_list)
-        connection.commit()
-        return "Batch insert successful"
-    except Error as e:
-        connection.rollback()
-        return f"The error '{e}' occurred"
+    with connection.cursor() as cursor:
+        query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({', '.join(['%s'] * len(columns))})"
+        try:
+            cursor.executemany(query, values_list)
+            connection.commit()
+            logger.info("Batch insert successful")
+            return
+        except Error as e:
+            connection.rollback()
+            logger.warning(f"Batch Insert failed: {e}")
+            return
 
 
 def update_row(connection, table, updates, condition):
@@ -123,16 +126,16 @@ def update_row(connection, table, updates, condition):
     condition = "id = 1"
     update_row(connection, table, updates, condition)
     """
-    cursor = connection.cursor()
-    updates = ', '.join(f'{col} = %s' for col in updates.keys())
-    query = f"UPDATE {table} SET {updates} WHERE {condition}"
-    try:
-        cursor.execute(query, tuple(updates.values()))
-        connection.commit()
-        return "Update successful"
-    except Error as e:
-        connection.rollback()
-        return f"The error '{e}' occurred"
+    with connection.cursor() as cursor:
+        updates = ', '.join(f'{col} = %s' for col in updates.keys())
+        query = f"UPDATE {table} SET {updates} WHERE {condition}"
+        try:
+            cursor.execute(query, tuple(updates.values()))
+            connection.commit()
+            logger.info("Update successful")
+        except Error as e:
+            connection.rollback()
+            logger.warning(f"Update failed: {e}")
 
 
 def execute_script(connection, script):
@@ -147,14 +150,14 @@ def execute_script(connection, script):
     :rtype str
 
     """
-    cursor = connection.cursor()
-    try:
-        for statement in script.split(';'):
-            if statement.strip():
-                cursor.execute(statement)
-        connection.commit()
-        return "Script executed successfully"
-    except Error as e:
-        connection.rollback()
-        return f"The error '{e}' occurred"
+    with connection.cursor() as cursor:
+        try:
+            for statement in script.split(';'):
+                if statement.strip():
+                    cursor.execute(statement)
+            connection.commit()
+            logger.info("Script executed successfully")
+        except Error as e:
+            connection.rollback()
+            logger.warning(f"Script execution failed: {e}")
 
