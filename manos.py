@@ -4,6 +4,7 @@ import DatabaseFunctions as DBF
 import os
 from datetime import datetime
 
+
 CREATE_TABLE_QUERY = """
 CREATE TABLE IF NOT EXISTS SPROUT_EXTRACT_DATA (
     date DATETIME,
