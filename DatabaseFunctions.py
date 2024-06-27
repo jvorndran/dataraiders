@@ -1,8 +1,10 @@
-# Script that tests connecting to the cloud sql db and inserting a row into a table
 from mysql.connector import Error, connect
 import os
 from Logger import logger
 
+SSL_CA = '../certs/server-ca.pem'
+SSL_CERT = '../certs/client-cert.pem'
+SSL_KEY = '../certs/client-key.pem'
 
 # Set up connection to the cloud sql db
 def connect_to_db():
@@ -11,7 +13,10 @@ def connect_to_db():
             user=os.environ.get('MYSQL_USER'),
             password=os.environ.get('MYSQL_PASSWORD'),
             host=os.environ.get('MYSQL_HOST'),
-            database=os.environ.get('DB_NAME')
+            database=os.environ.get('DB_NAME'),
+            ssl_ca=SSL_CA,
+            ssl_cert=SSL_CERT,
+            ssl_key=SSL_KEY
         )
 
         if connection.is_connected():
@@ -36,8 +41,8 @@ def close_connection(connection):
     :return: None
     """
     if connection.is_connected():
-        connection.close()
         connection.cursor().close()
+        connection.close()
         logger.info("MySQL connection is closed")
 
 
@@ -160,4 +165,3 @@ def execute_script(connection, script):
         except Error as e:
             connection.rollback()
             logger.warning(f"Script execution failed: {e}")
-
